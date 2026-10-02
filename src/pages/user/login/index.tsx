@@ -23,8 +23,8 @@ import { Alert, App, Button, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { startTransition, useState } from 'react';
 import { Footer } from '@/components';
-import { login } from '@/services/ant-design-pro/api';
-import { getFakeCaptcha } from '@/services/ant-design-pro/login';
+import { login } from '@/services/luckyh';
+import { saveSession } from '@/utils/session';
 import Settings from '../../../../config/defaultSettings';
 
 /**
@@ -148,29 +148,27 @@ const Login: React.FC = () => {
   };
 
   const handleSubmit = async (values: API.LoginParams) => {
+    if (type !== 'account') {
+      message.info('手机号验证码登录暂未开放，请使用账户密码登录');
+      return;
+    }
     try {
-      // 登录
-      const msg = await login({ ...values, type });
-      if (msg.status === 'ok') {
-        const defaultLoginSuccessMessage = intl.formatMessage({
+      const result = await login({
+        username: values.username || '',
+        password: values.password || '',
+      });
+      saveSession(result, Boolean(values.autoLogin));
+      message.success(
+        intl.formatMessage({
           id: 'pages.login.success',
           defaultMessage: '登录成功！',
-        });
-        message.success(defaultLoginSuccessMessage);
-        await fetchUserInfo();
-        const urlParams = new URL(window.location.href).searchParams;
-        const redirectUrl = getSafeRedirectUrl(urlParams.get('redirect'));
-        window.location.href = redirectUrl;
-        return;
-      }
-      // 如果失败去设置用户错误信息
-      setUserLoginState(msg);
+        }),
+      );
+      await fetchUserInfo();
+      const urlParams = new URL(window.location.href).searchParams;
+      window.location.href = getSafeRedirectUrl(urlParams.get('redirect'));
     } catch {
-      const defaultLoginFailureMessage = intl.formatMessage({
-        id: 'pages.login.failure',
-        defaultMessage: '登录失败，请重试！',
-      });
-      message.error(defaultLoginFailureMessage);
+      setUserLoginState({ status: 'error', type: 'account' });
     }
   };
   const { status, type: loginType } = userLoginState;
@@ -244,7 +242,7 @@ const Login: React.FC = () => {
             <LoginMessage
               content={intl.formatMessage({
                 id: 'pages.login.accountLogin.errorMessage',
-                defaultMessage: '账户或密码错误(admin/ant.design)',
+                defaultMessage: '账户或密码错误，请重试',
               })}
             />
           )}
@@ -369,14 +367,8 @@ const Login: React.FC = () => {
                     ),
                   },
                 ]}
-                onGetCaptcha={async (phone) => {
-                  const result = await getFakeCaptcha({
-                    phone,
-                  });
-                  if (!result) {
-                    return;
-                  }
-                  message.success('获取验证码成功！验证码为：1234');
+                onGetCaptcha={async () => {
+                  message.info('手机号验证码登录暂未开放，请使用账户密码登录');
                 }}
               />
             </>

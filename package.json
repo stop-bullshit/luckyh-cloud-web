@@ -1,8 +1,8 @@
 {
-  "name": "ant-design-pro",
+  "name": "luckyh-cloud-web",
   "version": "6.0.3",
   "private": true,
-  "description": "An out-of-box UI solution for enterprise applications",
+  "description": "Ant Design Pro 原版脚手架，适配 LuckyH Cloud 用户与订单接口",
   "repository": "git@github.com:ant-design/ant-design-pro.git",
   "scripts": {
     "analyze": "cross-env ANALYZE=1 max build",
@@ -20,7 +20,7 @@
     "preview:build": "max build && max preview --port 8000",
     "record": "cross-env NODE_ENV=development UMI_ENV=test max record --scene=login",
     "simple": "node scripts/simple.js",
-    "start": "cross-env UMI_ENV=dev max dev",
+    "start": "cross-env UMI_ENV=dev PORT=8000 max dev",
     "start:no-mock": "cross-env MOCK=none max dev",
     "start:pre": "cross-env UMI_ENV=pre MOCK=none max dev",
     "start:test": "cross-env UMI_ENV=test MOCK=none max dev",

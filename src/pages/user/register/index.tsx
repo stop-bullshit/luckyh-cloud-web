@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { history, Link } from '@umijs/max';
 import {
+  App,
   Button,
   Col,
   Form,
   Input,
-  message,
   Popover,
   Progress,
   Row,
@@ -14,7 +14,7 @@ import {
 } from 'antd';
 import type { Store } from 'antd/es/form/interface';
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { fakeRegister } from './service';
 import useStyles from './styles';
 
@@ -59,13 +59,13 @@ const PasswordProgress: React.FC<{
 };
 
 const Register: FC = () => {
+  const { message } = App.useApp();
   const { styles } = useStyles();
-  const [count, setCount]: [number, any] = useState(0);
+  const count = 0;
   const [open, setVisible]: [boolean, any] = useState(false);
   const [prefix, setPrefix]: [string, any] = useState('86');
   const [popover, setPopover]: [boolean, any] = useState(false);
   const confirmDirty = false;
-  let interval: number | undefined;
   const queryClient = useQueryClient();
 
   const passwordStatusMap = {
@@ -87,26 +87,14 @@ const Register: FC = () => {
   };
 
   const [form] = Form.useForm();
-  useEffect(
-    () => () => {
-      clearInterval(interval);
-    },
-    [interval],
-  );
   const onGetCaptcha = () => {
-    let counts = 59;
-    setCount(counts);
-    interval = window.setInterval(() => {
-      counts -= 1;
-      setCount(counts);
-      if (counts === 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
+    message.info('当前注册无需验证码');
   };
   const { isPending: submitting, mutate: register } = useMutation({
     mutationFn: (formValues: Store) => {
       const payload = {
+        username: formValues.username,
+        realName: formValues.realName,
         mail: formValues.email,
         password: formValues.password,
         confirm: formValues.confirm,
@@ -121,7 +109,7 @@ const Register: FC = () => {
         queryClient.invalidateQueries({ queryKey: ['current-user'] });
         message.success('注册成功！');
         history.push({
-          pathname: `/user/register-result?account=${params.mail}`,
+          pathname: `/user/register-result?account=${encodeURIComponent(params.username)}`,
         });
       }
     },
@@ -165,6 +153,18 @@ const Register: FC = () => {
     <div className={styles.main}>
       <h3>注册</h3>
       <Form form={form} name="UserRegister" onFinish={onFinish}>
+        <FormItem
+          name="username"
+          rules={[{ required: true, message: '请输入用户名！' }]}
+        >
+          <Input size="large" placeholder="用户名" maxLength={50} />
+        </FormItem>
+        <FormItem
+          name="realName"
+          rules={[{ required: true, message: '请输入姓名！' }]}
+        >
+          <Input size="large" placeholder="姓名" maxLength={50} />
+        </FormItem>
         <FormItem
           name="email"
           rules={[
@@ -254,7 +254,7 @@ const Register: FC = () => {
               message: '请输入手机号!',
             },
             {
-              pattern: /^\d{11}$/,
+              pattern: /^1[3-9]\d{9}$/,
               message: '手机号格式错误!',
             },
           ]}
@@ -269,7 +269,6 @@ const Register: FC = () => {
               }}
             >
               <Option value="86">+86</Option>
-              <Option value="87">+87</Option>
             </Select>
 
             <Input size="large" placeholder="手机号" />
@@ -281,12 +280,12 @@ const Register: FC = () => {
               name="captcha"
               rules={[
                 {
-                  required: true,
+                  required: false,
                   message: '请输入验证码!',
                 },
               ]}
             >
-              <Input size="large" placeholder="验证码" />
+              <Input size="large" placeholder="当前注册无需验证码" disabled />
             </FormItem>
           </Col>
           <Col span={8}>

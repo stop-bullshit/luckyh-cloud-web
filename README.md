@@ -1,164 +1,59 @@
-<h1 align="center">Ant Design Pro</h1>
+# LuckyH Cloud Web
 
-<div align="center">
+基于 [Ant Design Pro 官方脚手架](https://github.com/ant-design/ant-design-pro)，保留原版登录页、布局、蓝色主题、Logo、国际化、主题设置和完整示例页面。
 
-An out-of-box UI solution for enterprise applications as a React boilerplate.
+项目目录：`D:\project\demo\luckyh-cloud-web`。
 
-[![CI](https://github.com/ant-design/ant-design-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/ant-design/ant-design-pro/actions/workflows/ci.yml)
-[![GitHub release](https://img.shields.io/github/v/release/ant-design/ant-design-pro.svg)](https://github.com/ant-design/ant-design-pro/releases)
-[![Build With Utoo](https://img.shields.io/badge/build%20with-utoo-028fe4.svg)](https://utoo.land)
-[![Build With Umi](https://img.shields.io/badge/build%20with-umi-028fe4.svg)](https://umijs.org/)
-[![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
-[![Ant Design](https://badgen.net/badge/icon/Ant%20Design?icon=https://gw.alipayobjects.com/zos/antfincdn/Pp4WPgVDB3/KDpgvguMpGfqaHPjicRK.svg&label)](https://ant.design/)
+## 启动
 
-Language: English | [简体中文](./README.zh-CN.md)
+Node.js 22 及以上；当前机器使用 Node.js 24、npm 11。首次启动：
 
-<img width="1718" height="1191" alt="light theme preview" src="https://github.com/user-attachments/assets/74ad0b4a-e086-4955-8edd-9f2cff31aee8" />
-<img width="1718" height="1191" alt="dark theme preview" src="https://github.com/user-attachments/assets/d4bcb7c1-42c7-4c0f-b130-1193a931f9f7" />
-
-</div>
-
-- Preview: https://preview.pro.ant.design
-- Documentation: [docs/cheatsheet.en-US.md](./docs/cheatsheet.en-US.md)
-- ChangeLog: https://github.com/ant-design/ant-design-pro/releases
-- FAQ: [docs/cheatsheet.en-US.md#faq](./docs/cheatsheet.en-US.md#faq)
-- **v6 Released!** — [What's new in v6](https://github.com/ant-design/ant-design-pro/releases/tag/v6.0.0)
-
-## Features
-
-- :bulb: **TypeScript**: A language for application-scale JavaScript
-- :scroll: **Blocks**: Build page with block template
-- :gem: **Neat Design**: Built on [Ant Design 6](https://ant.design/) specification
-- :triangular_ruler: **Common Templates**: Typical templates for enterprise applications
-- :rocket: **State of The Art Development**: Newest development stack of React 19/[Umi Max 4](https://umijs.org/)/[antd 6](https://ant.design/)/[utoopack](https://utoo.land)
-- :iphone: **Responsive**: Designed for variable screen sizes
-- :art: **Theming**: Customizable theme with [Tailwind CSS v4](https://tailwindcss.com/) + [antd-style](https://github.com/ant-design/antd-style)
-- :globe_with_meridians: **International**: Built-in i18n solution
-- :gear: **Best Practices**: Solid workflow to make your code healthy
-- :1234: **Mock development**: Easy to use mock development solution
-- :robot: **AI Assistant**: Built-in AI chatbot page powered by [Ant Design X](https://x.ant.design/)
-- :white_check_mark: **UI Test**: Fly safely with unit and e2e tests
-
-## Templates
-
-```
-- Welcome
-- Dashboard
-  - Analysis
-  - Monitor
-  - Workplace
-- Form
-  - Basic Form
-  - Step Form
-  - Advanced Form
-- List
-  - Search List (Articles/Projects/Applications)
-  - Table List
-  - Basic List
-  - Card List
-- Profile
-  - Basic Profile
-  - Advanced Profile
-- Result
-  - Success
-  - Fail
-- Exception
-  - 403
-  - 404
-  - 500
-- Account
-  - Account Center
-  - Account Settings
-- AI Assistant
-- User
-  - Login
-  - Register
-  - Register Result
-```
-
-## Usage
-
-### Get Started
-
-Clone or download this repository to your local machine:
-
-```bash
-git clone --depth=1 https://github.com/ant-design/ant-design-pro.git myapp
-cd myapp
-```
-
-### Installation
-
-```bash
-npm install
-```
-
-### Development
-
-```bash
-# Start development server (full version by default)
+```powershell
+cd D:\project\demo\luckyh-cloud-web
+npm ci
 npm start
 ```
 
-### Simplify to Simple Version
+也可双击 `start-web.bat`。访问 **http://localhost:8000/**。停止前端时在启动终端按 `Ctrl+C`。
 
-This project includes all blocks by default. If you need a minimal version, run:
+后端网关默认 `http://127.0.0.1:8080`；开发代理位于 `config/proxy.ts`。换地址时将 `.env.example` 复制为 `.env.local` 后修改 `API_TARGET`，再重启前端。前端仅访问网关，不直接连接 Nacos、数据库或 Redis。
 
-```bash
-npm run simple
-```
+演示账号：`admin`，密码：`123456`。原版登录表单已接入 `/api/auth/login`；登录后请求自动携带 Bearer 令牌，刷新页面通过 `/api/auth/validate` 验证身份，退出调用 `/api/auth/logout` 并清除本地令牌。勾选“自动登录”时在本机保存访问令牌；未勾选时仅保留在当前浏览器标签会话内。
 
-This will:
-- Remove extra page directories (dashboard, form, list/*, profile, result, exception, account, etc.)
-- Remove extra mock files
-- Replace routes with simple version
-- Remove extra dependencies from package.json
+## 页面与接口
 
-**Note**: This operation is irreversible and will permanently delete files.
+保留原版 Dashboard、表单、列表、详情、结果、异常、个人页与 AI 助手示例菜单。新增 **业务管理**：
 
-### Build
+| 页面 | 功能 | 网关接口 |
+| --- | --- | --- |
+| `/business/users` | 查询、分页、新建、编辑、详情、删除、查看关联订单 | `/api/user/users` |
+| `/business/orders` | 分页、按用户查询、新建、详情、支付、取消 | `/api/order/orders` |
+| `/user/register` | 注册普通登录账号 | `/api/auth/register` |
 
-```bash
+登录账号对应后端 `sys_user`，业务用户对应 `user`，两者独立。订单仅待支付状态提供支付和取消操作；当前后端没有订单编辑、删除和商品目录接口。
+
+原版示例页面使用脚手架自带 Mock，仅用于展示组件和模板；业务管理、登录、注册、退出全部调用真实后端。原版手机号验证码登录入口保留，当前后端未提供该能力，页面会提示使用账户密码登录。注册固定普通用户类型 `2`，无需验证码。
+
+后端分页已在用户、订单服务各增加 MyBatis Plus MySQL 分页拦截器；已有服务需要重启后生效。当前后端仍属于 demo，业务接口只验证登录态，尚未实现完整的角色权限和订单归属限制；用户资料的已有联系方式清空规则仍沿用后端行为。
+
+## 验证与构建
+
+```powershell
+npm run lint
+npm test -- src/utils/session.test.ts src/requestErrorConfig.test.ts
 npm run build
 ```
 
-## AI Skills (Claude Code)
+`dist/` 为生产构建产物。生产环境配置 `/api/` 反向代理到网关，并为前端路由提供 `index.html` 回退；参考 `deploy/nginx.conf`。其中 `host.docker.internal:8080` 适用于本机 Docker Desktop，其他服务器应改成实际网关地址。生产环境不提供原版示例 Mock。
 
-This project ships with two built-in [Claude Code Skills](https://docs.anthropic.com/en/docs/claude-code/skills) in `.claude/skills/`:
+可选本机构建镜像：`docker build -t luckyh-cloud-web .`，运行：`docker run --rm -p 8000:80 luckyh-cloud-web`（先停止开发服务，释放 8000 端口）。
 
-| Skill | Trigger | Description |
-|---|---|---|
-| `/pro-upgrade` | "upgrade pro", "update to latest" | Auto-upgrade to the latest Ant Design Pro version. Diffs the latest template, merges framework changes while preserving your business code. |
-| `/antd` | antd-related code or questions | Query antd component APIs, props, tokens, demos; lint for deprecated usage; migrate between versions — all via `@ant-design/cli`. |
+## 结构
 
-**Usage in Claude Code:**
+- `config/`：原版配置、菜单路由、网关代理。
+- `src/pages/Users`、`src/pages/Orders`：真实业务页面。
+- `src/services/luckyh`：请求类型与后端接口。
+- `src/utils/session.ts`：登录令牌存取。
+- `src/requestErrorConfig.ts`：兼容后端 `{code,message,data}` 与原版示例响应，处理业务失败和 401。
 
-```bash
-# Upgrade the project to latest Pro version
-/pro-upgrade
-
-# Query antd component info, debug issues, run lint, etc.
-/antd
-```
-
-> 💡 If your project was cloned from this repo, these skills are already included — no installation needed. To get the latest skill definitions, pull the updates from the template or run `npx skills add ant-design/ant-design-pro` to refresh them.
-
-## Browsers support
-
-Modern browsers.
-
-| [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/edge/edge_48x48.png" alt="Edge" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Edge | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png" alt="Firefox" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Firefox | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png" alt="Chrome" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Chrome | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/safari/safari_48x48.png" alt="Safari" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Safari |
-| --- | --- | --- | --- |
-| Edge | last 2 versions | last 2 versions | last 2 versions |
-
-## Contributing
-
-Any type of contribution is welcome, here are some examples of how you may contribute to this project:
-
-- Use Ant Design Pro in your daily work.
-- Submit [issues](http://github.com/ant-design/ant-design-pro/issues) to report bugs or ask questions.
-- Propose [pull requests](http://github.com/ant-design/ant-design-pro/pulls) to improve our code.
-
-<a href="https://openomy.app/github/ant-design/ant-design-pro" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.app/svg?repo=ant-design/ant-design-pro&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
-</a>
+脚手架来源提交：`24de7e34b8f035553cbe82639ee86292df71b14a`，版本 Ant Design Pro 6.0.3，React 19 + TypeScript + Umi Max 4 + Ant Design 6。保留原版组件实现，未执行自定义视觉改版。

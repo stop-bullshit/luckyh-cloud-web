@@ -224,7 +224,7 @@ export default defineConfig({
       },
     },
   },
-  requestRecord: {},
+  requestRecord: { exclude: ['/api/'] },
   exportStatic: {},
   define: {
     'process.env.CI': process.env.CI,

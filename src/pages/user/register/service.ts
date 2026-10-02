@@ -1,4 +1,4 @@
-import { request } from '@umijs/max';
+import { register } from '@/services/luckyh';
 
 export interface StateType {
   status?: 'ok' | 'error';
@@ -6,6 +6,8 @@ export interface StateType {
 }
 
 export interface UserRegisterParams {
+  username: string;
+  realName: string;
   mail: string;
   password: string;
   confirm: string;
@@ -15,8 +17,14 @@ export interface UserRegisterParams {
 }
 
 export async function fakeRegister(params: UserRegisterParams) {
-  return request('/api/register', {
-    method: 'POST',
-    data: params,
+  await register({
+    username: params.username,
+    realName: params.realName,
+    email: params.mail || undefined,
+    phone: params.mobile || undefined,
+    password: params.password,
+    confirmPassword: params.confirm,
+    userType: 2,
   });
+  return { status: 'ok' as const };
 }

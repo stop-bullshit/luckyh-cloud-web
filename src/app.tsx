@@ -10,6 +10,7 @@ import React from 'react';
 // Initialize dayjs plugins globally
 dayjs.extend(relativeTime);
 
+import { App } from 'antd';
 import {
   AvatarDropdown,
   DocLink,
@@ -19,7 +20,9 @@ import {
   OfflineBanner,
   VersionDropdown,
 } from '@/components';
-import { currentUser as queryCurrentUser } from '@/services/ant-design-pro/api';
+import Feedback from '@/components/Feedback';
+import { getCurrentUser } from '@/services/luckyh';
+import { readSession } from '@/utils/session';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
 
@@ -37,11 +40,17 @@ export async function getInitialState(): Promise<{
   settingDrawerOpen?: boolean;
 }> {
   const fetchUserInfo = async () => {
+    if (!readSession()) return undefined;
     try {
-      const msg = await queryCurrentUser({
+      const user = await getCurrentUser({
         skipErrorHandler: true,
       });
-      return msg.data;
+      return {
+        ...user,
+        name: user.realName || user.username,
+        userid: String(user.id),
+        access: user.userType === 1 ? 'admin' : 'user',
+      };
     } catch (_error) {
       const { pathname, search, hash } = history.location;
       history.replace(
@@ -190,9 +199,17 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
-  baseURL: isDev ? '' : 'https://pro-api.ant-design-demo.workers.dev',
+  baseURL: '',
   ...errorConfig,
 };
+
+export function innerProvider(container: React.ReactNode) {
+  return (
+    <App>
+      <Feedback>{container}</Feedback>
+    </App>
+  );
+}
 
 export function rootContainer(container: React.ReactNode) {
   return (

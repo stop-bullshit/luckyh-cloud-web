@@ -9,11 +9,10 @@ const RegisterResult: React.FC<Record<string, unknown>> = () => {
 
   const actions = (
     <div className={styles.actions}>
-      <Button size="large" type="primary">
-        <span>查看邮箱</span>
-      </Button>
-      <Link to="/" prefetch>
-        <Button size="large">返回首页</Button>
+      <Link to="/user/login" prefetch>
+        <Button size="large" type="primary">
+          立即登录
+        </Button>
       </Link>
     </div>
   );
@@ -28,7 +27,7 @@ const RegisterResult: React.FC<Record<string, unknown>> = () => {
           <span>你的账户：{email} 注册成功</span>
         </div>
       }
-      subTitle="激活邮件已发送到你的邮箱中，邮件有效期为24小时。请及时登录邮箱，点击邮件中的链接激活帐户。"
+      subTitle="账号已创建，请使用注册的用户名和密码登录。"
       extra={actions}
     />
   );

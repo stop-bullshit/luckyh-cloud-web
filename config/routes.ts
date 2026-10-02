@@ -12,6 +12,16 @@
  */
 export default [
   {
+    path: '/business',
+    name: 'business',
+    icon: 'appstore',
+    routes: [
+      { path: '/business', redirect: '/business/users' },
+      { path: '/business/users', name: 'users', component: './Users' },
+      { path: '/business/orders', name: 'orders', component: './Orders' },
+    ],
+  },
+  {
     path: '/user',
     layout: false,
     routes: [

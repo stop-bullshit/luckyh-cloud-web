@@ -1,4 +1,7 @@
 export default {
+  'menu.business': 'Business',
+  'menu.business.users': 'Users',
+  'menu.business.orders': 'Orders',
   'menu.welcome': 'Welcome',
   'menu.more-blocks': 'More Blocks',
   'menu.home': 'Home',
