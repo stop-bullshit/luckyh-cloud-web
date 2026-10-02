@@ -3,9 +3,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY . .
-RUN npm run build
+ARG COMMIT_HASH
+RUN COMMIT_HASH="$COMMIT_HASH" npm run build
 
 FROM nginx:alpine
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+ENV GATEWAY_UPSTREAM=http://host.docker.internal:8080
+ENV NGINX_ENVSUBST_FILTER=GATEWAY_UPSTREAM
+COPY deploy/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
