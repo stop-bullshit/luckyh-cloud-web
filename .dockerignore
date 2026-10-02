@@ -4,3 +4,11 @@ dist
 .local
 src/.umi*
 *.log
+.env*
+.npmrc
+*.pem
+*.key
+.github
+.idea
+.vscode
+coverage

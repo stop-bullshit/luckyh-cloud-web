@@ -20,14 +20,22 @@ import {
   OfflineBanner,
   VersionDropdown,
 } from '@/components';
-import Feedback from '@/components/Feedback';
+import Feedback, { feedback } from '@/components/Feedback';
 import { getCurrentUser } from '@/services/luckyh';
-import { readSession } from '@/utils/session';
+import { clearSession, readSession } from '@/utils/session';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
+
+const redirectToLogin = () => {
+  const { pathname, search, hash } = history.location;
+  if (pathname.startsWith('/user/')) return;
+  history.replace(
+    `${loginPath}?redirect=${encodeURIComponent(pathname + search + hash)}`,
+  );
+};
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -40,7 +48,10 @@ export async function getInitialState(): Promise<{
   settingDrawerOpen?: boolean;
 }> {
   const fetchUserInfo = async () => {
-    if (!readSession()) return undefined;
+    if (!readSession()) {
+      redirectToLogin();
+      return undefined;
+    }
     try {
       const user = await getCurrentUser({
         skipErrorHandler: true,
@@ -51,11 +62,41 @@ export async function getInitialState(): Promise<{
         userid: String(user.id),
         access: user.userType === 1 ? 'admin' : 'user',
       };
-    } catch (_error) {
-      const { pathname, search, hash } = history.location;
-      history.replace(
-        `${loginPath}?redirect=${encodeURIComponent(pathname + search + hash)}`,
-      );
+    } catch (error) {
+      const failure = error as Error & {
+        code?: number | string;
+        response?: {
+          status?: number;
+          data?: { message?: string; errorMessage?: string };
+        };
+      };
+      // 逻辑变动: 用户校验失败才清理会话，服务故障保留会话-20261002-2127-1
+      if (
+        failure.code === 401 ||
+        failure.code === '401' ||
+        failure.response?.status === 401
+      ) {
+        clearSession();
+        redirectToLogin();
+        return undefined;
+      }
+
+      const status = failure.response?.status;
+      let content =
+        failure.response?.data?.message ||
+        failure.response?.data?.errorMessage ||
+        (failure.name === 'BusinessError' ? failure.message : undefined);
+      if (!content && status === 503) content = '服务暂时不可用，请稍后重试';
+      if (
+        !content &&
+        (status === 504 ||
+          failure.code === 'ECONNABORTED' ||
+          failure.code === 'ETIMEDOUT')
+      )
+        content = '请求超时，请稍后重试';
+      if (!content && status) content = `请求失败（HTTP ${status}）`;
+      if (!content) content = '连接服务失败，请确认后端已启动后重试';
+      feedback.showError({ key: 'user-info-error', content });
     }
     return undefined;
   };
@@ -120,13 +161,8 @@ export const layout: RunTimeLayoutConfig = ({
     // },
     footerRender: () => <Footer />,
     onPageChange: () => {
-      const { location } = history;
-      // 如果没有登录，重定向到 login
-      if (!initialState?.currentUser && location.pathname !== loginPath) {
-        history.replace(
-          `${loginPath}?redirect=${encodeURIComponent(location.pathname + location.search + location.hash)}`,
-        );
-      }
+      // 逻辑变动: 用户资料暂时不可用时不误判为未登录-20261002-2127-2
+      if (!readSession()) redirectToLogin();
     },
     bgLayoutImgList: [
       {

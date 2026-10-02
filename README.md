@@ -49,9 +49,11 @@ npm test -- src/utils/session.test.ts src/requestErrorConfig.test.ts
 npm run build
 ```
 
-`dist/` 为生产构建产物。生产环境配置 `/api/` 反向代理到网关，并为前端路由提供 `index.html` 回退；参考 `deploy/nginx.conf`。其中 `host.docker.internal:8080` 适用于本机 Docker Desktop，其他服务器应改成实际网关地址。生产环境不提供原版示例 Mock。
+`dist/` 为生产构建产物。生产环境配置 `/api/` 反向代理到网关，并为前端路由提供 `index.html` 回退；参考 `deploy/nginx.conf`。容器启动时通过 `GATEWAY_UPSTREAM` 设置网关，默认 `http://host.docker.internal:8080` 适用于本机 Docker Desktop；K8S 使用实际网关 Service 地址。生产环境不提供原版示例 Mock。
 
 可选本机构建镜像：`docker build -t luckyh-cloud-web .`，运行：`docker run --rm -p 8000:80 luckyh-cloud-web`（先停止开发服务，释放 8000 端口）。
+
+GitHub Actions 构建和 GHCR 发布、镜像版本及 K8S 拉取方式见 [镜像发布说明](deploy/ghcr.md)。
 
 ## 结构
 
