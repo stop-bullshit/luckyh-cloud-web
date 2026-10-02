@@ -1,7 +1,7 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --no-audit --no-fund
+RUN npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 COPY . .
 ARG COMMIT_HASH
 RUN COMMIT_HASH="$COMMIT_HASH" npm run build
