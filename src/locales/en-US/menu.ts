@@ -1,7 +1,11 @@
 export default {
   'menu.business': 'Business',
   'menu.business.users': 'Users',
+  'menu.business.products': 'Products',
   'menu.business.orders': 'Orders',
+  'menu.business.inventory': 'Inventory',
+  'menu.business.accounts': 'Balance Management',
+  'menu.business.transactions': 'Distributed Transactions',
   'menu.welcome': 'Welcome',
   'menu.more-blocks': 'More Blocks',
   'menu.home': 'Home',

@@ -53,6 +53,29 @@ export interface BusinessUser {
   updateTime?: string;
 }
 
+export interface ManagedUser {
+  id: number;
+  username: string;
+  realName: string;
+  email?: string;
+  phone?: string;
+  userType: 1 | 2;
+  status: 0 | 1;
+  lastLoginTime?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface ManagedUserInput {
+  username: string;
+  password?: string;
+  realName: string;
+  email?: string;
+  phone?: string;
+  userType: 1 | 2;
+  status: 0 | 1;
+}
+
 export interface UserInput {
   username: string;
   realName: string;
@@ -65,19 +88,64 @@ export interface OrderRecord {
   orderNo: string;
   userId: number;
   userInfo?: BusinessUser | null;
+  productId?: number;
   productName: string;
   productPrice: number;
   quantity: number;
   totalAmount: number;
   status: number;
   statusDesc?: string;
+  payTime?: string;
+  cancelTime?: string;
+  refundTime?: string;
+  operationLogs?: OrderOperation[];
   createTime?: string;
   updateTime?: string;
 }
 
+export interface OrderOperation {
+  operationType: 'CREATE' | 'PURCHASE' | 'PAY' | 'CANCEL' | 'REFUND';
+  fromStatus?: number;
+  toStatus: number;
+  xid?: string;
+  createTime: string;
+}
+
 export interface OrderInput {
   userId: number;
+  productId: number;
+  quantity: number;
+}
+
+export interface InventoryRecord {
+  productId: number;
   productName: string;
   productPrice: number;
+  availableQuantity: number;
+  updateTime: string;
+}
+
+export interface ProductInput {
+  productName: string;
+  productPrice: number;
+}
+
+export interface AccountBalance {
+  userId: number;
+  balance: number;
+  updateTime?: string;
+}
+
+export interface PurchaseInput {
+  userId: number;
+  productId: number;
   quantity: number;
+}
+
+export interface SeataInfo {
+  enabled: boolean;
+  mode: string;
+  version: string;
+  description: string;
+  transactionMethods: string[];
 }

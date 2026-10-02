@@ -4,10 +4,8 @@ import {
   ModalForm,
   PageContainer,
   type ProColumns,
-  ProFormDependency,
   ProFormDigit,
   ProFormSelect,
-  ProFormText,
   ProTable,
 } from '@ant-design/pro-components';
 import { useLocation } from '@umijs/max';
@@ -20,18 +18,21 @@ import {
   Popconfirm,
   Space,
   Tag,
+  Timeline,
   Typography,
 } from 'antd';
 import { useRef, useState } from 'react';
 import {
   cancelOrder,
   createOrder,
+  getManagedUsers,
   getOrder,
   getOrders,
-  getUsers,
+  getProducts,
   type OrderInput,
   type OrderRecord,
   payOrder,
+  refundOrder,
 } from '@/services/luckyh';
 
 const money = new Intl.NumberFormat('zh-CN', {
@@ -42,6 +43,14 @@ const orderStatus: Record<number, { text: string; color: string }> = {
   0: { text: '待支付', color: 'gold' },
   1: { text: '已支付', color: 'green' },
   2: { text: '已取消', color: 'default' },
+  3: { text: '已退款', color: 'blue' },
+};
+const operationNames: Record<string, string> = {
+  CREATE: '创建订单',
+  PURCHASE: '直接购买',
+  PAY: '支付订单',
+  CANCEL: '取消订单',
+  REFUND: '订单退款',
 };
 
 export default function Orders() {
@@ -71,16 +80,24 @@ export default function Orders() {
 
   const changeStatus = async (
     record: OrderRecord,
-    action: 'pay' | 'cancel',
+    action: 'pay' | 'cancel' | 'refund',
   ) => {
     setPendingId(record.id);
     try {
       if (action === 'pay') {
         await payOrder(record.id);
-      } else {
+      } else if (action === 'cancel') {
         await cancelOrder(record.id);
+      } else {
+        await refundOrder(record.id);
       }
-      messageApi.success(action === 'pay' ? '订单支付成功' : '订单已取消');
+      messageApi.success(
+        action === 'pay'
+          ? '订单支付成功'
+          : action === 'cancel'
+            ? '订单已取消'
+            : '订单退款成功',
+      );
       actionRef.current?.reload();
       if (detail?.id === record.id) {
         setDetail(await getOrder(record.id));
@@ -93,8 +110,23 @@ export default function Orders() {
     }
   };
 
-  const statusActions = (record: OrderRecord) =>
-    record.status === 0 ? (
+  const statusActions = (record: OrderRecord) => {
+    if (record.status === 1) {
+      return (
+        <Popconfirm
+          title="确认全额退款？"
+          description="退款会退回账户余额并返还商品库存。"
+          okText="确认退款"
+          cancelText="返回"
+          onConfirm={() => changeStatus(record, 'refund')}
+        >
+          <Button type="link" disabled={pendingId !== undefined}>
+            退款
+          </Button>
+        </Popconfirm>
+      );
+    }
+    return record.status === 0 ? (
       <Space size={0}>
         <Popconfirm
           title="确认支付这笔订单？"
@@ -121,6 +153,7 @@ export default function Orders() {
         </Popconfirm>
       </Space>
     ) : null;
+  };
 
   const columns: ProColumns<OrderRecord>[] = [
     {
@@ -247,7 +280,7 @@ export default function Orders() {
             key="create"
             title="新建订单"
             width={560}
-            initialValues={{ productPrice: 1, quantity: 1 }}
+            initialValues={{ quantity: 1 }}
             modalProps={{ destroyOnHidden: true }}
             trigger={
               <Button type="primary" icon={<PlusOutlined />}>
@@ -255,17 +288,10 @@ export default function Orders() {
               </Button>
             }
             onFinish={async (values) => {
-              const totalCents =
-                Math.round(values.productPrice * 100) * values.quantity;
-              if (totalCents > 9999999999) {
-                messageApi.warning('订单金额不能超过 99,999,999.99 元');
-                return false;
-              }
               try {
                 await createOrder({
                   userId: values.userId,
-                  productName: values.productName.trim(),
-                  productPrice: values.productPrice,
+                  productId: values.productId,
                   quantity: values.quantity,
                 });
                 messageApi.success('订单创建成功');
@@ -278,20 +304,20 @@ export default function Orders() {
           >
             <ProFormSelect
               name="userId"
-              label="业务用户"
+              label="登录用户"
               placeholder="输入用户名搜索并选择用户"
               showSearch={{ filterOption: false }}
               debounceTime={300}
-              rules={[{ required: true, message: '请选择业务用户' }]}
+              rules={[{ required: true, message: '请选择登录用户' }]}
               request={async ({ keyWords }) => {
                 try {
-                  const page = await getUsers({
+                  const page = await getManagedUsers({
                     current: 1,
                     size: 20,
                     username: keyWords || undefined,
                   });
                   return page.records.map((user) => ({
-                    label: `${user.realName || user.username} · ${user.username}（ID: ${user.id}）${user.status === 0 ? ' · 已禁用' : ''}`,
+                    label: `${user.realName || user.username} · ${user.username}（ID: ${user.id}）· ${user.userType === 1 ? '管理员' : '普通用户'}${user.status === 0 ? ' · 已禁用' : ''}`,
                     value: user.id,
                     disabled: user.status === 0,
                   }));
@@ -300,25 +326,31 @@ export default function Orders() {
                 }
               }}
             />
-            <ProFormText
-              name="productName"
-              label="商品名称"
-              placeholder="请输入商品名称"
-              fieldProps={{ maxLength: 200, showCount: true }}
+            <ProFormSelect
+              name="productId"
+              label="商品"
+              placeholder="输入商品名称搜索并选择商品"
+              showSearch={{ filterOption: false }}
+              debounceTime={300}
               rules={[
-                { required: true, whitespace: true, message: '请输入商品名称' },
+                { required: true, message: '请选择商品' },
+                { type: 'integer', min: 1, max: Number.MAX_SAFE_INTEGER },
               ]}
-            />
-            <ProFormDigit
-              name="productPrice"
-              label="商品单价（元）"
-              min={0.01}
-              max={99999999.99}
-              fieldProps={{ precision: 2, step: 0.01 }}
-              rules={[
-                { required: true, message: '请输入商品单价' },
-                { type: 'number', min: 0.01, max: 99999999.99 },
-              ]}
+              request={async ({ keyWords }) => {
+                try {
+                  const page = await getProducts({
+                    current: 1,
+                    size: 20,
+                    productName: keyWords || undefined,
+                  });
+                  return page.records.map((product) => ({
+                    label: `${product.productName} · ${money.format(product.productPrice)} · 可用库存 ${product.availableQuantity}`,
+                    value: product.productId,
+                  }));
+                } catch {
+                  return [];
+                }
+              }}
             />
             <ProFormDigit
               name="quantity"
@@ -331,15 +363,11 @@ export default function Orders() {
                 { type: 'integer', min: 1, max: 2147483647 },
               ]}
             />
-            <ProFormDependency name={['productPrice', 'quantity']}>
-              {({ productPrice, quantity }) => (
-                <Alert
-                  type="info"
-                  showIcon
-                  title={`订单金额 ${money.format((Math.round((productPrice || 0) * 100) * (quantity || 0)) / 100)}`}
-                />
-              )}
-            </ProFormDependency>
+            <Alert
+              type="info"
+              showIcon
+              title="商品名称、单价和订单金额以服务端商品数据为准"
+            />
           </ModalForm>,
         ]}
       />
@@ -379,6 +407,11 @@ export default function Orders() {
                   ),
                 },
                 { key: 'userId', label: '用户 ID', children: detail.userId },
+                {
+                  key: 'productId',
+                  label: '商品 ID',
+                  children: detail.productId ?? '-',
+                },
                 {
                   key: 'productName',
                   label: '商品名称',
@@ -429,8 +462,46 @@ export default function Orders() {
                     '—'
                   ),
                 },
+                {
+                  key: 'payTime',
+                  label: '支付时间',
+                  children: detail.payTime || '—',
+                },
+                {
+                  key: 'cancelTime',
+                  label: '取消时间',
+                  children: detail.cancelTime || '—',
+                },
+                {
+                  key: 'refundTime',
+                  label: '退款时间',
+                  children: detail.refundTime || '—',
+                },
               ]}
             />
+            {detail.operationLogs && detail.operationLogs.length > 0 && (
+              <Timeline
+                items={detail.operationLogs.map((operation) => ({
+                  children: (
+                    <Space orientation="vertical" size={0}>
+                      <Typography.Text strong>
+                        {operationNames[operation.operationType] ||
+                          operation.operationType}
+                      </Typography.Text>
+                      <Typography.Text type="secondary">
+                        {operation.createTime} ·{' '}
+                        {operation.fromStatus ?? '创建'} → {operation.toStatus}
+                      </Typography.Text>
+                      {operation.xid && (
+                        <Typography.Text copyable type="secondary">
+                          XID: {operation.xid}
+                        </Typography.Text>
+                      )}
+                    </Space>
+                  ),
+                }))}
+              />
+            )}
             {detail.userInfo ? (
               <Descriptions
                 title="关联用户"

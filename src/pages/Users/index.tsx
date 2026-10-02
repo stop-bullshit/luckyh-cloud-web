@@ -4,37 +4,37 @@ import {
   ModalForm,
   PageContainer,
   type ProColumns,
+  ProFormSelect,
   ProFormText,
   ProTable,
 } from '@ant-design/pro-components';
-import { history } from '@umijs/max';
 import { Button, Descriptions, Drawer, message, Popconfirm, Tag } from 'antd';
 import { useRef, useState } from 'react';
 import {
-  type BusinessUser,
-  createUser,
-  deleteUser,
-  getUser,
-  getUsers,
-  type UserInput,
-  updateUser,
+  createManagedUser,
+  deleteManagedUser,
+  getManagedUser,
+  getManagedUsers,
+  type ManagedUser,
+  type ManagedUserInput,
+  updateManagedUser,
 } from '@/services/luckyh';
 
 export default function Users() {
   const actionRef = useRef<ActionType | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const [formOpen, setFormOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<BusinessUser>();
+  const [editingUser, setEditingUser] = useState<ManagedUser>();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailUser, setDetailUser] = useState<BusinessUser>();
+  const [detailUser, setDetailUser] = useState<ManagedUser>();
 
   const showDetails = async (id: number) => {
     setDetailUser(undefined);
     setDetailLoading(true);
     setDetailOpen(true);
     try {
-      setDetailUser(await getUser(id));
+      setDetailUser(await getManagedUser(id));
     } catch {
       setDetailOpen(false);
     } finally {
@@ -42,7 +42,7 @@ export default function Users() {
     }
   };
 
-  const columns: ProColumns<BusinessUser>[] = [
+  const columns: ProColumns<ManagedUser>[] = [
     { title: 'ID', dataIndex: 'id', width: 72, search: false },
     {
       title: '用户名',
@@ -62,6 +62,14 @@ export default function Users() {
     { title: '真实姓名', dataIndex: 'realName', search: false },
     { title: '邮箱', dataIndex: 'email', search: false, ellipsis: true },
     { title: '手机号', dataIndex: 'phone', search: false },
+    {
+      title: '用户类型',
+      dataIndex: 'userType',
+      width: 100,
+      search: false,
+      render: (_, record) =>
+        record.userType === 1 ? <Tag color="blue">管理员</Tag> : '普通用户',
+    },
     {
       title: '状态',
       dataIndex: 'status',
@@ -109,13 +117,13 @@ export default function Users() {
         <Popconfirm
           key="delete"
           title="确认删除此用户？"
-          description={`将删除 ${record.realName}（${record.username}）的业务资料。`}
+          description={`将删除登录账户 ${record.realName}（${record.username}）。`}
           okText="删除"
           cancelText="取消"
           okButtonProps={{ danger: true }}
           onConfirm={async () => {
             try {
-              await deleteUser(record.id);
+              await deleteManagedUser(record.id);
               messageApi.success('用户已删除');
               actionRef.current?.reload();
               return true;
@@ -133,20 +141,20 @@ export default function Users() {
   ];
 
   return (
-    <PageContainer title="用户管理" subTitle="维护订单关联的业务用户资料">
+    <PageContainer title="用户管理" subTitle="维护系统登录账户">
       {contextHolder}
-      <ProTable<BusinessUser, { username?: string }>
+      <ProTable<ManagedUser, { username?: string }>
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
-        headerTitle="业务用户"
+        headerTitle="登录用户"
         size="middle"
         scroll={{ x: 1080 }}
         search={{ labelWidth: 'auto', defaultCollapsed: false }}
         pagination={{ defaultPageSize: 10, showSizeChanger: true }}
         request={async ({ current, pageSize, username }) => {
           try {
-            const page = await getUsers({
+            const page = await getManagedUsers({
               current,
               size: pageSize,
               username: username?.trim() || undefined,
@@ -171,7 +179,7 @@ export default function Users() {
         ]}
       />
       {formOpen && (
-        <ModalForm<UserInput>
+        <ModalForm<ManagedUserInput>
           key={editingUser?.id ?? 'new'}
           title={editingUser ? '编辑用户' : '新建用户'}
           open={formOpen}
@@ -180,17 +188,20 @@ export default function Users() {
           initialValues={editingUser}
           modalProps={{ destroyOnHidden: true }}
           onFinish={async (values) => {
-            const input: UserInput = {
+            const input: ManagedUserInput = {
               username: values.username.trim(),
+              password: values.password?.trim() || undefined,
               realName: values.realName.trim(),
               email: values.email?.trim() || undefined,
               phone: values.phone?.trim() || undefined,
+              userType: values.userType,
+              status: values.status,
             };
             try {
               if (editingUser) {
-                await updateUser(editingUser.id, input);
+                await updateManagedUser(editingUser.id, input);
               } else {
-                await createUser(input);
+                await createManagedUser(input);
               }
               messageApi.success(editingUser ? '用户已更新' : '用户已创建');
               actionRef.current?.reload();
@@ -203,7 +214,7 @@ export default function Users() {
           <ProFormText
             name="username"
             label="用户名"
-            placeholder="请输入业务用户名"
+            placeholder="请输入登录用户名"
             rules={[
               { required: true, whitespace: true, message: '请输入用户名' },
             ]}
@@ -215,6 +226,22 @@ export default function Users() {
             rules={[
               { required: true, whitespace: true, message: '请输入真实姓名' },
             ]}
+          />
+          <ProFormText.Password
+            name="password"
+            label="登录密码"
+            placeholder={editingUser ? '留空表示不修改密码' : '请输入登录密码'}
+            rules={
+              editingUser
+                ? []
+                : [
+                    {
+                      required: true,
+                      whitespace: true,
+                      message: '请输入登录密码',
+                    },
+                  ]
+            }
           />
           <ProFormText
             name="email"
@@ -231,6 +258,26 @@ export default function Users() {
               { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号' },
             ]}
           />
+          <ProFormSelect
+            name="userType"
+            label="用户类型"
+            initialValue={2}
+            options={[
+              { label: '管理员', value: 1 },
+              { label: '普通用户', value: 2 },
+            ]}
+            rules={[{ required: true, message: '请选择用户类型' }]}
+          />
+          <ProFormSelect
+            name="status"
+            label="状态"
+            initialValue={1}
+            options={[
+              { label: '启用', value: 1 },
+              { label: '禁用', value: 0 },
+            ]}
+            rules={[{ required: true, message: '请选择状态' }]}
+          />
         </ModalForm>
       )}
       <Drawer
@@ -240,17 +287,6 @@ export default function Users() {
         loading={detailLoading}
         size={480}
         destroyOnHidden
-        extra={
-          detailUser && (
-            <Button
-              onClick={() =>
-                history.push(`/business/orders?userId=${detailUser.id}`)
-              }
-            >
-              查看关联订单
-            </Button>
-          )
-        }
       >
         {detailUser && (
           <Descriptions
@@ -280,6 +316,11 @@ export default function Users() {
                 children: detailUser.phone || '—',
               },
               {
+                key: 'userType',
+                label: '用户类型',
+                children: detailUser.userType === 1 ? '管理员' : '普通用户',
+              },
+              {
                 key: 'status',
                 label: '状态',
                 children: (
@@ -287,6 +328,11 @@ export default function Users() {
                     {detailUser.status === 1 ? '启用' : '禁用'}
                   </Tag>
                 ),
+              },
+              {
+                key: 'lastLoginTime',
+                label: '最后登录时间',
+                children: detailUser.lastLoginTime?.replace('T', ' ') || '—',
               },
               {
                 key: 'createTime',
