@@ -26,7 +26,7 @@ spec:
         - env:
             - name: GATEWAY_UPSTREAM
               value: http://gateway-service:8080
-          image: ghcr.io/stop-bullshit/luckyh-cloud-web:sha-cafec48437d6d40f34765adaf351713ff19846c5
+          image: ghcr.io/stop-bullshit/luckyh-cloud-web:sha-4eaab4d69c4361a2d280f249efd780c2719b1d7a
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
