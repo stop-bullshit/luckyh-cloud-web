@@ -1,16 +1,21 @@
 import {
+  type ActionType,
   ModalForm,
   PageContainer,
+  type ProColumns,
   ProFormDigit,
-  ProFormSelect,
+  ProTable,
 } from '@ant-design/pro-components';
-import { Button, Card, Descriptions, Form, message, Space } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Drawer, message, Space, Typography } from 'antd';
+import { useRef, useState } from 'react';
 import {
   type AccountBalance,
+  type AccountBalanceLog,
   deductAccount,
-  getAccount,
+  getAccountBalanceLogs,
+  getAccounts,
   getManagedUsers,
+  type ManagedUser,
   rechargeAccount,
 } from '@/services/luckyh';
 
@@ -19,113 +24,224 @@ const money = new Intl.NumberFormat('zh-CN', {
   currency: 'CNY',
 });
 
-// 逻辑变动: 账户余额增量充值-20261002-1556-01
+type AccountRow = AccountBalance & Pick<ManagedUser, 'username' | 'realName'>;
+
+// 逻辑变动: 余额明细查看-20261004-1149-01
+// 明细金额保留后端十进制字符串，避免大额余额转换为浮点数后丢失分位。
+function formatBalanceAmount(amount: string) {
+  const negative = amount.startsWith('-');
+  const [integer, fraction] = (negative ? amount.slice(1) : amount).split('.');
+  return `${negative ? '-' : ''}¥${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
+}
+
+const balanceLogColumns: ProColumns<AccountBalanceLog>[] = [
+  { title: '时间', dataIndex: 'createTime', width: 190 },
+  {
+    title: '类型',
+    dataIndex: 'changeType',
+    width: 110,
+    valueEnum: {
+      RECHARGE: '充值',
+      DEDUCT: '管理扣减',
+      DEBIT: '订单扣款',
+      CREDIT: '订单退款',
+    },
+  },
+  {
+    title: '变动金额',
+    dataIndex: 'changeAmount',
+    width: 180,
+    render: (_, record) => {
+      const deducted = record.changeAmount.startsWith('-');
+      return (
+        <Typography.Text type={deducted ? 'danger' : 'success'}>
+          {deducted ? '' : '+'}
+          {formatBalanceAmount(record.changeAmount)}
+        </Typography.Text>
+      );
+    },
+  },
+  {
+    title: '变动前余额',
+    dataIndex: 'beforeBalance',
+    width: 180,
+    render: (_, record) => formatBalanceAmount(record.beforeBalance),
+  },
+  {
+    title: '变动后余额',
+    dataIndex: 'afterBalance',
+    width: 180,
+    render: (_, record) => formatBalanceAmount(record.afterBalance),
+  },
+  {
+    title: '订单号',
+    dataIndex: 'orderNo',
+    width: 260,
+    render: (_, record) => record.orderNo || '—',
+  },
+  {
+    title: '事务号',
+    dataIndex: 'transactionId',
+    width: 300,
+    render: (_, record) => record.transactionId || '—',
+  },
+];
+
+// 逻辑变动: 余额管理列表操作-20261004-1210-01
 export default function Accounts() {
-  const [account, setAccount] = useState<AccountBalance>();
-  const [loading, setLoading] = useState(false);
+  const [account, setAccount] = useState<AccountRow>();
+  const [listError, setListError] = useState(false);
+  const actionRef = useRef<ActionType | null>(null);
+  const listRequestSequence = useRef(0);
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [deductOpen, setDeductOpen] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [logsError, setLogsError] = useState(false);
+  const logsActionRef = useRef<ActionType | null>(null);
+  const logsGeneration = useRef(0);
+  const logsRequestSequence = useRef(0);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const loadAccount = async (userId: number) => {
-    setLoading(true);
-    try {
-      setAccount(await getAccount(userId));
-    } catch {
-      setAccount(undefined);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const columns: ProColumns<AccountRow>[] = [
+    { title: '用户 ID', dataIndex: 'userId', width: 100, search: false },
+    { title: '登录用户名', dataIndex: 'username', width: 180 },
+    { title: '姓名', dataIndex: 'realName', width: 160, search: false },
+    {
+      title: '可用余额',
+      dataIndex: 'balance',
+      width: 180,
+      search: false,
+      render: (_, record) => money.format(record.balance),
+    },
+    {
+      title: '余额更新时间',
+      dataIndex: 'updateTime',
+      width: 200,
+      search: false,
+      render: (_, record) =>
+        record.updateTime?.replace('T', ' ') || '尚未发生余额变动',
+    },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 250,
+      fixed: 'right',
+      render: (_, record) => [
+        <Button
+          key="recharge"
+          type="link"
+          onClick={() => {
+            if (account?.userId !== record.userId) logsGeneration.current += 1;
+            setAccount(record);
+            setLogsError(false);
+            setRechargeOpen(true);
+          }}
+        >
+          充值
+        </Button>,
+        <Button
+          key="deduct"
+          type="link"
+          danger
+          disabled={record.balance <= 0}
+          onClick={() => {
+            if (account?.userId !== record.userId) logsGeneration.current += 1;
+            setAccount(record);
+            setLogsError(false);
+            setDeductOpen(true);
+          }}
+        >
+          扣减余额
+        </Button>,
+        <Button
+          key="logs"
+          type="link"
+          onClick={() => {
+            logsGeneration.current += 1;
+            setAccount(record);
+            setLogsError(false);
+            setLogsOpen(true);
+          }}
+        >
+          余额明细
+        </Button>,
+      ],
+    },
+  ];
 
   return (
     <PageContainer
       title="余额管理"
-      subTitle="选择登录用户查询余额，并执行充值或扣减"
+      subTitle="搜索登录用户，在列表中充值、扣减或查看余额明细"
     >
       {contextHolder}
-      <Card>
-        <Form<{ userId: number }>
-          layout="inline"
-          onValuesChange={() => setAccount(undefined)}
-          onFinish={({ userId }) => loadAccount(userId)}
-        >
-          <ProFormSelect
-            name="userId"
-            label="登录用户"
-            width={420}
-            placeholder="输入用户名搜索并选择用户"
-            disabled={loading}
-            showSearch={{ filterOption: false }}
-            debounceTime={300}
-            rules={[{ required: true, message: '请选择登录用户' }]}
-            request={async ({ keyWords }) => {
-              try {
-                // 逻辑变动: 余额关联登录用户-20261002-1725-01
-                const page = await getManagedUsers({
-                  current: 1,
-                  size: 20,
-                  username: keyWords || undefined,
-                });
-                return page.records.map((user) => ({
-                  label: `${user.username} · ${user.realName} · ${
-                    user.userType === 1 ? '管理员' : '普通用户'
-                  } · ID ${user.id}`,
-                  value: user.id,
-                }));
-              } catch {
-                return [];
-              }
-            }}
-          />
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              查询
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-      {account && (
-        <Card
-          title="账户余额"
-          style={{ marginTop: 16 }}
-          extra={
-            <Space>
-              <Button type="primary" onClick={() => setRechargeOpen(true)}>
-                充值
-              </Button>
-              <Button
-                danger
-                disabled={account.balance <= 0}
-                onClick={() => setDeductOpen(true)}
-              >
-                扣减余额
-              </Button>
-            </Space>
+      {listError && (
+        <Alert
+          type="error"
+          showIcon
+          title="账户列表加载失败"
+          description="请重试以获取用户及余额。"
+          action={
+            <Button onClick={() => actionRef.current?.reload()}>重试</Button>
           }
-        >
-          <Descriptions
-            bordered
-            column={1}
-            items={[
-              { key: 'userId', label: '用户 ID', children: account.userId },
-              {
-                key: 'balance',
-                label: '可用余额',
-                children: money.format(account.balance),
-              },
-              {
-                key: 'updateTime',
-                label: '更新时间',
-                children: account.updateTime || '尚未发生余额变动',
-              },
-            ]}
-          />
-        </Card>
+        />
       )}
+      <div hidden={listError}>
+        <ProTable<AccountRow>
+          rowKey="userId"
+          actionRef={actionRef}
+          columns={columns}
+          headerTitle="账户余额"
+          search={{ labelWidth: 'auto', defaultCollapsed: false }}
+          scroll={{ x: 1100 }}
+          pagination={{
+            defaultPageSize: 10,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 20, 50, 100],
+            showTotal: (total) => `共 ${total} 个用户`,
+          }}
+          locale={{ emptyText: '暂无符合条件的用户' }}
+          request={async (params) => {
+            const sequence = ++listRequestSequence.current;
+            setListError(false);
+            try {
+              const page = await getManagedUsers({
+                current: params.current,
+                size: Math.min(params.pageSize || 10, 100),
+                username: params.username || undefined,
+              });
+              const balances = page.records.length
+                ? await getAccounts(page.records.map((user) => user.id))
+                : [];
+              const balanceByUser = new Map(
+                balances.map((item) => [item.userId, item]),
+              );
+              const rows = page.records.map((user) => {
+                const balance = balanceByUser.get(user.id);
+                if (!balance) throw new Error('批量余额结果缺少用户');
+                return {
+                  ...balance,
+                  username: user.username,
+                  realName: user.realName,
+                };
+              });
+              if (sequence !== listRequestSequence.current)
+                return { data: [], total: 0, success: false };
+              setAccount(
+                (current) =>
+                  rows.find((row) => row.userId === current?.userId) || current,
+              );
+              return { data: rows, total: page.total, success: true };
+            } catch {
+              if (sequence === listRequestSequence.current) setListError(true);
+              return { data: [], total: 0, success: false };
+            }
+          }}
+        />
+      </div>
       {account && rechargeOpen && (
         <ModalForm<{ amount: number }>
-          title={`账户充值：用户 ID ${account.userId}`}
+          title={`账户充值：${account.username}（ID ${account.userId}）`}
           open={rechargeOpen}
           onOpenChange={setRechargeOpen}
           width={480}
@@ -133,7 +249,8 @@ export default function Accounts() {
           onFinish={async ({ amount }) => {
             try {
               await rechargeAccount(account.userId, amount);
-              await loadAccount(account.userId);
+              await actionRef.current?.reload();
+              if (logsOpen) logsActionRef.current?.reload();
               messageApi.success('充值成功');
               return true;
             } catch {
@@ -168,7 +285,7 @@ export default function Accounts() {
       )}
       {account && deductOpen && (
         <ModalForm<{ amount: number }>
-          title={`扣减余额：用户 ID ${account.userId}`}
+          title={`扣减余额：${account.username}（ID ${account.userId}）`}
           open={deductOpen}
           onOpenChange={setDeductOpen}
           width={480}
@@ -176,7 +293,8 @@ export default function Accounts() {
           onFinish={async ({ amount }) => {
             try {
               await deductAccount(account.userId, amount);
-              await loadAccount(account.userId);
+              await actionRef.current?.reload();
+              if (logsOpen) logsActionRef.current?.reload();
               messageApi.success('扣减成功');
               return true;
             } catch {
@@ -208,6 +326,80 @@ export default function Accounts() {
             />
           </Space>
         </ModalForm>
+      )}
+      {account && logsOpen && (
+        <Drawer
+          key={account.userId}
+          title={`余额明细：${account.username}（ID ${account.userId}）`}
+          size="large"
+          open={logsOpen}
+          destroyOnHidden
+          onClose={() => {
+            setLogsOpen(false);
+            logsGeneration.current += 1;
+          }}
+        >
+          {logsError && (
+            <Alert
+              type="error"
+              showIcon
+              title="余额明细加载失败"
+              description="请重试以获取当前分页数据。"
+              action={
+                <Button onClick={() => logsActionRef.current?.reload()}>
+                  重试
+                </Button>
+              }
+            />
+          )}
+          <div hidden={logsError}>
+            <ProTable<AccountBalanceLog>
+              key={account.userId}
+              rowKey="id"
+              actionRef={logsActionRef}
+              columns={balanceLogColumns}
+              headerTitle="余额变动记录（最新在前）"
+              search={false}
+              options={{ density: false, setting: false, fullScreen: false }}
+              scroll={{ x: 1400 }}
+              pagination={{
+                defaultPageSize: 10,
+                showSizeChanger: true,
+                pageSizeOptions: [10, 20, 50, 100],
+                showTotal: (total) => `共 ${total} 条明细`,
+              }}
+              locale={{ emptyText: '暂无余额明细，仅记录功能启用后的余额变动' }}
+              request={async (params) => {
+                const generation = logsGeneration.current;
+                const sequence = ++logsRequestSequence.current;
+                setLogsError(false);
+                try {
+                  const page = await getAccountBalanceLogs(account.userId, {
+                    current: params.current,
+                    size: Math.min(params.pageSize || 10, 100),
+                  });
+                  if (
+                    generation !== logsGeneration.current ||
+                    sequence !== logsRequestSequence.current
+                  )
+                    return { data: [], total: 0, success: false };
+                  return {
+                    data: page.records,
+                    total: page.total,
+                    success: true,
+                  };
+                } catch {
+                  if (
+                    generation === logsGeneration.current &&
+                    sequence === logsRequestSequence.current
+                  )
+                    setLogsError(true);
+                  return { data: [], total: 0, success: false };
+                }
+              }}
+            />
+          </div>
+        </Drawer>
       )}
     </PageContainer>
   );

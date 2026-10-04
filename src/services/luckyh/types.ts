@@ -133,7 +133,19 @@ export interface ProductInput {
 export interface AccountBalance {
   userId: number;
   balance: number;
-  updateTime?: string;
+  updateTime?: string | null;
+}
+
+export interface AccountBalanceLog {
+  id: number;
+  userId: number;
+  changeType: 'RECHARGE' | 'DEDUCT' | 'DEBIT' | 'CREDIT';
+  changeAmount: string;
+  beforeBalance: string;
+  afterBalance: string;
+  orderNo: string | null;
+  transactionId: string | null;
+  createTime: string;
 }
 
 export interface PurchaseInput {

@@ -2,6 +2,7 @@ import type { RequestOptions } from '@@/plugin-request/request';
 import { request } from '@umijs/max';
 import type {
   AccountBalance,
+  AccountBalanceLog,
   AccountUser,
   ApiResult,
   BusinessUser,
@@ -113,10 +114,6 @@ export function refundOrder(id: number) {
   return api<string>(`/api/order/orders/${id}/refund`, { method: 'POST' });
 }
 
-export function getInventory(productId: number) {
-  return api<InventoryRecord>(`/api/inventory/inventory/${productId}`);
-}
-
 export function getProducts(params: { current?: number; size?: number; productName?: string }) {
   return api<PageData<InventoryRecord>>('/api/inventory/inventory', { params });
 }
@@ -138,6 +135,22 @@ export function replenishInventory(productId: number, quantity: number) {
 
 export function getAccount(userId: number) {
   return api<AccountBalance>(`/api/account/accounts/${userId}`);
+}
+
+export function getAccounts(userIds: number[]) {
+  return api<AccountBalance[]>('/api/account/accounts/batch', {
+    params: { ids: userIds.join(',') },
+  });
+}
+
+export function getAccountBalanceLogs(
+  userId: number,
+  params: { current?: number; size?: number },
+) {
+  return api<PageData<AccountBalanceLog>>(
+    `/api/account/accounts/${userId}/balance-logs`,
+    { params },
+  );
 }
 
 export function rechargeAccount(userId: number, amount: number) {

@@ -252,7 +252,8 @@ export default function Transactions() {
         <Card title="手动核对">
           <Space wrap>
             <Link to="/business/orders">订单</Link>
-            <Link to="/business/inventory">库存</Link>
+            {/* 逻辑变动: 库存入口合并到商品管理-20261004-1209-02 */}
+            <Link to="/business/products">商品与库存</Link>
             <Link to="/business/accounts">账户余额</Link>
             <Button
               type="link"

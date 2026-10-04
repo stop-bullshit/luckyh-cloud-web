@@ -43,9 +43,10 @@ export default [
       { path: '/business/products', name: 'products', component: './Products' },
       { path: '/business/orders', name: 'orders', component: './Orders' },
       {
+        // 逻辑变动: 库存旧入口跳转商品管理-20261004-1206-02
         path: '/business/inventory',
-        name: 'inventory',
-        component: './Inventory',
+        redirect: '/business/products',
+        hideInMenu: true,
       },
       { path: '/business/accounts', name: 'accounts', component: './Accounts' },
       {

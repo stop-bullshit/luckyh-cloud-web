@@ -3,7 +3,6 @@ export default {
   'menu.business.users': '用户管理',
   'menu.business.products': '商品管理',
   'menu.business.orders': '订单管理',
-  'menu.business.inventory': '库存查询',
   'menu.business.accounts': '余额管理',
   'menu.business.transactions': '分布式事务演示',
   'menu.welcome': '欢迎',

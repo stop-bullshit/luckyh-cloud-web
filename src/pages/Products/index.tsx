@@ -25,6 +25,7 @@ const money = new Intl.NumberFormat('zh-CN', {
 });
 
 // 逻辑变动: 商品管理与独立补货-20261002-1518-01
+// 逻辑变动: 商品列表统一查询库存-20261004-1206-01
 export default function Products() {
   const actionRef = useRef<ActionType | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -86,14 +87,14 @@ export default function Products() {
   return (
     <PageContainer
       title="商品管理"
-      subTitle="新增商品自动生成编号，初始库存为 0，通过补货增加可用库存"
+      subTitle="列表直接查看可用库存，按商品名称搜索；新增商品初始库存为 0，通过补货增加库存"
     >
       {contextHolder}
       <ProTable<InventoryRecord, { productName?: string }>
         actionRef={actionRef}
         rowKey="productId"
         columns={columns}
-        headerTitle="商品列表"
+        headerTitle="商品与库存列表"
         size="middle"
         scroll={{ x: 900 }}
         search={{ labelWidth: 'auto', defaultCollapsed: false }}
