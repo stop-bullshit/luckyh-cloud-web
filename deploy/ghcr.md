@@ -35,4 +35,18 @@ imagePullSecrets:
 2. 在账号 Packages 页面检查镜像、SHA 标签和读取权限。
 3. 部署时设置 `GATEWAY_UPSTREAM` 和拉取 Secret，再验证首页、直接刷新 `/business/orders`、登录及订单操作。
 
-工作流仅发布镜像，不自动部署或升级 K8S 中的应用。
+默认分支的镜像发布成功后，工作流会更新 `deploy/k8s/web.yaml` 中的 SHA 镜像标签；Fleet 同步该目录并滚动更新应用。发布标签不触发这一步。
+
+## 静态资源加载检查
+
+Nginx 对超过 1KB 的 JS/CSS 开启 gzip。带 8 位内容 hash 的 JS/CSS 缓存一年，并设置 `immutable`；HTML 和未带 hash 的资源使用 `no-cache`，允许浏览器保存但每次使用前重新校验。不存在的 hash 资源返回 404，页面路由仍回退到 HTML，`/api/` 保持原有网关代理。
+
+部署后，从首页取得实际 JS/CSS 文件名并检查：
+
+```powershell
+curl.exe -I -H 'Accept-Encoding: gzip' 'http://cloud.home/<带hash的实际文件名>.js'
+curl.exe -I 'http://cloud.home/'
+curl.exe -I 'http://cloud.home/business/orders'
+```
+
+JS/CSS 应返回 `Content-Encoding: gzip`、`Vary: Accept-Encoding` 和 `Cache-Control: public, max-age=31536000, immutable`；页面应返回 `Cache-Control: no-cache`。比较下载大小时用 GET，单独检查 HEAD 不会测出实际传输字节数。
